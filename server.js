@@ -2,9 +2,8 @@ const dotenv = require("dotenv"); // require package
 dotenv.config(); // Loads the environment variables from .env file
 const express = require("express");
 const mongoose = require("mongoose");
-
-
 const app = express();
+const Fruit = require("./models/fruit.js");
 
 mongoose.connect(process.env.MONGODB_URI);
 // log connection status to terminal on start
@@ -12,7 +11,11 @@ mongoose.connection.on("connected", () => {
   console.log(`Connected to MongoDB ${mongoose.connection.name}.`);
 });
 
-const Fruit = require("./models/fruit.js");
+mongoose.connection.on("Error", (error) => {
+    console.log(`An error connecting to MongoDB has occured ${error}.`);
+  });
+  
+
 
 app.use(express.urlencoded({ extended: false }));
 
