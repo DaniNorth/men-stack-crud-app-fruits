@@ -1,51 +1,91 @@
-const dotenv = require("dotenv"); // require package
-dotenv.config(); // Loads the environment variables from .env file
+//dependencies
+const dotenv = require("dotenv"); 
 const express = require("express");
 const mongoose = require("mongoose");
-const app = express();
 const Fruit = require("./models/fruit.js");
+const methodOverride = require("method-override");
+const morgan = require("morgan");
 
-mongoose.connect(process.env.MONGODB_URI);
-// log connection status to terminal on start
-mongoose.connection.on("connected", () => {
-  console.log(`Connected to MongoDB ${mongoose.connection.name}.`);
-});
+const app = express();
 
-mongoose.connection.on("Error", (error) => {
-    console.log(`An error connecting to MongoDB has occured ${error}.`);
-  });
-  
+//config code
+dotenv.config();
 
+//middleware
 
 app.use(express.urlencoded({ extended: false }));
 
 
-// GET /
+app.use(methodOverride("_method"));
+
+//morgan middleware
+app.use(morgan("dev"));
+
+mongoose.connect(process.env.MONGODB_URI);
+
+mongoose.connection.on("connected", () => {
+  console.log(`Connected to MongoDB ${mongoose.connection.name}`);
+});
+
+//Get /
 app.get("/", async (req, res) => {
-    res.render("index.ejs");
+  res.render("index.ejs");
 });
-  
-app.get("/fruits", async (req, res) => {
-    const allFruits = await Fruit.find();
-    res.render("fruits/index.ejs", { fruits: allFruits });
-}); 
 
-// GET /fruits/new
+//path to a page with a form
 app.get("/fruits/new", (req, res) => {
-    res.render("fruits/new.ejs");
+  res.render("fruits/new.ejs");
 });
 
+// POST /fruits
 app.post("/fruits", async (req, res) => {
-    if (req.body.isReadyToEat === "on") {
-        req.body.isReadyToEat = true;
-    } else {
-        req.body.isReadyToEat = false;
-    }
-    await Fruit.create(req.body);
-        res.redirect("/fruits/new");
-    });
+  if (req.body.isReadyToEat === "on") {
+    req.body.isReadyToEat = true;
+  } else {
+    req.body.isReadyToEat = false;
+  }
+  await Fruit.create(req.body);
+  res.redirect("/fruits");
+});
+
+
+//index route, designed to show our list of fruits
+app.get("/fruits", async (req, res) => {
+  const allFruits = await Fruit.find({});
+  //pass to render a context object, gives the page the information it needs
+  res.render("fruits/index.ejs", { fruits: allFruits });
+});
+
+
+//show fruit for individual fruits
+app.get("/fruits/:fruitId", async (req, res) => {
+  const foundFruit = await Fruit.findById(req.params.fruitId);
+  res.render("fruits/show.ejs", { fruit: foundFruit });
+});
+
+app.delete("/fruits/:fruitId", async (req, res) => {
+  await Fruit.findByIdAndDelete(req.params.fruitId);
+  res.redirect("/fruits");
+});
+
+app.get("/fruits/:fruitId/edit", async (req, res) => {
+  const foundFruit = await Fruit.findById(req.params.fruitId);
+
+  res.render("fruits/edit.ejs", { fruit: foundFruit });
+});
+
+//update route used to capture edit form submissions from the client and send updates to mongoDB
+app.put("/fruits/:fruitId", async (req, res) => {
+  if (req.body.isReadyToEat == "on") {
+    req.body.isReadyToEat = true;
+  } else {
+    req.body.isReadyToEat = false;
+  }
+  //update the fruit in the database
+  await Fruit.findByIdAndUpdate(req.params.fruitId, req.body);
+  res.redirect(`/fruits/${req.params.fruitId}`);
+});
 
 app.listen(3000, () => {
-    console.log("Listening on port 3000");
-  });
-  
+  console.log("Listening on port 3000");
+});
